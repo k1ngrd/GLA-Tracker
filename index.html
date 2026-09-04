@@ -222,7 +222,23 @@ html, body {
 #guild-app .cat-chip.dragging { opacity: 0.4; }
 #guild-app .cat-chip.drag-over { border-color: var(--gold); }
 #guild-app .cat-chip .drag-handle { color: #62798c; font-size: 13px; margin-right: -2px; cursor: grab; }
-#guild-app .cat-chip .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+#guild-app .swatch-input {
+  width: 16px; height: 16px; flex: none; padding: 0; border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px; background: none; cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+#guild-app .swatch-input::-webkit-color-swatch-wrapper { padding: 0; }
+#guild-app .swatch-input::-webkit-color-swatch { border: none; border-radius: 3px; }
+#guild-app .swatch-input::-moz-color-swatch { border: none; border-radius: 3px; }
+#guild-app .text-color-toggle { display: flex; gap: 3px; flex: none; }
+#guild-app .tc-btn {
+  width: 16px; height: 16px; border-radius: 4px; padding: 0; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2); font-size: 9px; line-height: 14px; font-weight: 700;
+  font-family: 'Inter', sans-serif; opacity: 0.5; transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+#guild-app .tc-btn.tc-white { background: #ffffff; color: #08131d; }
+#guild-app .tc-btn.tc-black { background: #08131d; color: #ffffff; }
+#guild-app .tc-btn.active { opacity: 1; border-color: var(--gold); }
+#guild-app .tc-btn:hover { opacity: 0.85; }
 #guild-app .cat-name-input {
   background: transparent; border: none; color: var(--parchment); font-size: 12.5px;
   font-family: 'Inter', sans-serif; font-weight: 600; width: 108px; padding: 2px 3px; border-radius: 5px;
@@ -494,7 +510,7 @@ html, body {
     const grpRow = document.getElementById('grp-row');
     const colRow = document.getElementById('col-row');
     grpRow.innerHTML = '<th class="corner-top"></th>' +
-      groups.filter(g => g.cols.length > 0).map(g => `<th colspan="${g.cols.length}" style="background:${g.color}; color:${textColorFor(g.color)}">${g.name}</th>`).join('') +
+      groups.filter(g => g.cols.length > 0).map(g => `<th colspan="${g.cols.length}" style="background:${g.color}; color:${g.textColor === 'black' ? '#08131d' : g.textColor === 'white' ? '#ffffff' : textColorFor(g.color)}">${g.name}</th>`).join('') +
       '<th style="background:#0c1b26;"></th>';
     colRow.innerHTML = '<th class="corner-bottom">Membro</th>' +
       groups.flatMap(g => g.cols.map(c => `<th>${c.label}</th>`)).join('') +
@@ -546,8 +562,12 @@ html, body {
       <div class="cat-block">
         <span class="cat-chip" draggable="true" data-group="${g.id}">
           <span class="drag-handle">⠿</span>
-          <span class="swatch" style="background:${g.color}"></span>
+          <input type="color" class="swatch-input" data-group="${g.id}" value="${g.color}" title="Cor da categoria" />
           <input class="cat-name-input" data-group="${g.id}" value="${g.name.replace(/"/g,'&quot;')}" />
+          <span class="text-color-toggle" title="Cor do texto">
+            <button type="button" class="tc-btn tc-white ${g.textColor === 'white' ? 'active' : ''}" data-group="${g.id}" data-tc="white" title="Texto branco">A</button>
+            <button type="button" class="tc-btn tc-black ${g.textColor === 'black' ? 'active' : ''}" data-group="${g.id}" data-tc="black" title="Texto preto">A</button>
+          </span>
           <button class="cat-del-btn" data-group="${g.id}" title="Remover categoria">✕</button>
         </span>
         ${g.cols.length ? `
@@ -565,6 +585,13 @@ html, body {
     el.querySelectorAll('.cat-name-input').forEach(inp => {
       inp.addEventListener('change', onRenameGroup);
       inp.addEventListener('click', e => e.stopPropagation());
+    });
+    el.querySelectorAll('.swatch-input').forEach(inp => {
+      inp.addEventListener('input', onChangeGroupColor);
+      inp.addEventListener('click', e => e.stopPropagation());
+    });
+    el.querySelectorAll('.tc-btn').forEach(btn => {
+      btn.addEventListener('click', onToggleTextColor);
     });
     el.querySelectorAll('.cat-chip').forEach(chip => {
       chip.addEventListener('dragstart', onChipDragStart);
@@ -632,6 +659,28 @@ html, body {
       g.name = e.target.value.trim() || g.name;
       await saveGroups();
       renderHead();
+    }
+  }
+
+  async function onChangeGroupColor(e) {
+    const id = e.target.dataset.group;
+    const g = groups.find(x => x.id === id);
+    if (g) {
+      g.color = e.target.value;
+      await saveGroups();
+      renderHead();
+    }
+  }
+
+  async function onToggleTextColor(e) {
+    const id = e.target.dataset.group;
+    const choice = e.target.dataset.tc;
+    const g = groups.find(x => x.id === id);
+    if (g) {
+      g.textColor = g.textColor === choice ? null : choice; // click again to go back to automatic
+      await saveGroups();
+      renderHead();
+      renderCatChips();
     }
   }
 
